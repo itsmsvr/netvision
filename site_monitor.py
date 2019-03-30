@@ -9,7 +9,7 @@ def clear():
     subprocess.call('cls', shell = True)
 
 clear()
-print(Fore.BLACK + Back.WHITE + '------------------------------PORTAL MONITOR---------------------------')
+print(Fore.BLACK + Back.WHITE + '------------------------------URL WATCHER---------------------------')
 color_reset()
 print('URL to monitor         ->', end = ' ')
 url = input()
@@ -40,8 +40,7 @@ time.sleep(intensity)
 
 try:
 
-    i = 1
-    while i in range(100):
+    while True:
         time.sleep(intensity)
 
         if my_request.status_code == 200:
