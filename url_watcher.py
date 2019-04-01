@@ -1,6 +1,6 @@
 #checks for import error and if not any persists, imports 4 built-in and 2 3rd party packages...
 try:
-    import winsound, requests, time, subprocess, sys
+    import winsound, requests, smtplib, time, subprocess, sys
     from requests.exceptions import SSLError, ConnectionError
     from colorama import Fore, Style, Back, init
 except ImportError:
@@ -16,12 +16,16 @@ def clear():
 
 #if ssl error is found, and user selects to go with simple http, this method is executed,
 #which in turn calls the main_monitor_loop without setting the url as https...
-def continue_without_encryption(url):
-    print('under construction')
+def continue_without_encryption(url, intensity, sound_choice):
+    url = url.replace('https://','http://')
+    print('\n [!] Continuing without encryption...')
+    main_monitor_loop(url, intensity, sound_choice)
 
 #main loop
-def main_monitor_loop(url):
+def main_monitor_loop(url, intensity, sound_choice):
     try:
+        
+        my_request = requests.get(url)
 
         while True:
             time.sleep(intensity)
@@ -43,13 +47,35 @@ def main_monitor_loop(url):
                     continue
 
             else:
-                print('Response failure')
+                print(Fore.RED + ' [!] Response failure | ' + Fore.WHITE + 'Status - ' + Fore.RED + str(my_request.status_code))
+                color_reset()
 
                 #plays the sound for failure
                 winsound.Beep(1300,3000)
 
+                #mail sending process, calls send_mail method
+                send_mail('dudhbiscuit@gmail.com','bhagalpur','sonumsvr@gmail.com', url, my_request.status_code)
+                break
+
     except KeyboardInterrupt:
         print('\n [-] Program halted by keyboard interuption\n [-] Exiting...')
+
+def send_mail(senderid, senderpswd, recieverid, url, status_code):
+    print(Fore.YELLOW + ' [+] Sending alert e-mail to ' + senderid)
+    color_reset()
+    subject = 'CRITICAL SITE FAILURE'
+    message = 'Warning, ' + url + 'failed to respond...\nError code - ' + status_code
+    message = "Subject: " + subject +'\n' + message
+    #smtp object definition part
+    connection = smtplib.SMTP('smtp.gmail.com', 587)
+    connection.ehlo()
+    connection.starttls()
+    connection.login(senderid, senderpswd)
+    connection.ehlo()
+    connection.sendmail(senderid,recieverid, message + '\n\n\n\n sent via URLWatcher')
+    print(' [+] Mail sent...')
+    connection.close()
+
 
 clear()
 print(Fore.BLACK + Back.WHITE + '------------------------------PORTAL MONITOR---------------------------')
@@ -69,11 +95,11 @@ except SSLError :
     winsound.Beep(2500,300)
     winsound.Beep(1000,500)
     color_reset()
-    print(' [-] Do you want to continue (y/n) ', end = ' ')
+    print(' [+] Do you want to continue (y/n) ', end = ' ')
     http_choice = input()
     
     if http_choice == 'y' or 'Y':
-        continue_without_encryption(url)
+        continue_without_encryption(url, intensity, sound_choice)
     else:
         print(' [-] Exiting...')
         sys.exit()
@@ -85,8 +111,9 @@ except ConnectionError:
     print(' [-] Exiting...')
     sys.exit()
 
-print('\n Starting monitoring process...')
+print('\n Starting monitoring process...\n')
 time.sleep(intensity)
+print(' |         Time/Date             |        Source                 |     Status   | Site Status |')
 
 try:
 
@@ -119,6 +146,6 @@ try:
             x = int(y)
 
 except KeyboardInterrupt:
-    print('\n [-] Program halted by keyboard interuption\n [-] Exiting...')
+    print('\n [-] Program halted by keyboard interruption\n [-] Exiting...')
         
 
