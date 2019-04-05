@@ -1,7 +1,8 @@
 #checks for import error and if not any persists, imports 4 built-in and 2 3rd party packages...
+#!/usr/bin/env python3
 try:
     import winsound, requests, smtplib, time, subprocess, sys, os
-    from requests.exceptions import SSLError, ConnectionError
+    from requests.exceptions import SSLError, ConnectionError, ConnectTimeout, InvalidURL
     from colorama import Fore, Style, Back, init
 except ImportError:
     print(" [-] One or more packages required to run this program are missing on this computer...")
@@ -14,20 +15,19 @@ def color_reset():
 def clear():
     if os.name == 'nt':
         subprocess.call('cls', shell = True)
+    elif os.name == 'posix':
+        subprocess.call('clear', shell = True)
     else:
         subprocess.call('clear', shell = True)
 
 def restart_self():
     subprocess.call('python site_monitor.py', shell = True)
 
-#if ssl error is found, and user selects to go with simple http, this method is executed,
-#which in turn calls the main_monitor_loop without setting the url as https...
-
 def continue_without_encryption(url, intensity, sound_choice):
     url = url.replace('https://','http://')
     my_request = requests.get(url)
     status = str(my_request.status_code)
-    print('\n [!] Continuing without encryption...')
+    print(' [!] Continuing without encryption...')
     winsound.PlaySound('step_sound.wav', winsound.SND_FILENAME)
     main_monitor_loop(url, intensity, sound_choice, status)
 
@@ -35,7 +35,7 @@ def continue_without_encryption(url, intensity, sound_choice):
 def main_monitor_loop(url, intensity, sound_choice, status):
     print('\n [+] Starting monitoring process...\n')
     winsound.PlaySound('step_sound.wav', winsound.SND_FILENAME)
-    time.sleep(intensity)
+    time.sleep(1)
 
     try:
         
@@ -52,10 +52,10 @@ def main_monitor_loop(url, intensity, sound_choice, status):
                 print(Fore.YELLOW + 'Reply from ' + url, end = ' ')
                 color_reset()
                 print('| Status - ' + Fore.CYAN + str(my_request.status_code) + Fore.WHITE, end = ' | ')
-                print(Fore.GREEN + 'Site is up')
+                print(Fore.GREEN + 'NORMAL')
                 color_reset()
                 
-                if sound_choice == 'y':
+                if sound_choice == '-s' or '-S':
                     winsound.PlaySound('step_sound.wav', winsound.SND_FILENAME)
                 else:
                     continue
@@ -75,75 +75,101 @@ def main_monitor_loop(url, intensity, sound_choice, status):
 
 
     except KeyboardInterrupt:
-        print('\n [-] Program halted by keyboard interruption\n [-] Exiting...\n [-] Developed by MSVR - github.com/itsmsvr/urlwatcher')
+        if sound_choice == '-s' or '-S':
+            winsound.PlaySound('startup_sound.wav', winsound.SND_FILENAME)
+        print('\n [-] Program halted by keyboard interruption (^C)\n [-] Exiting...\n [-] Developed by MSVR - github.com/itsmsvr/urlwatcher')
+        sys.exit()
 
 def send_mail(senderid, senderpswd, recieverid, url, status_code):
-    print(Fore.YELLOW + ' [+] Sending alert e-mail to ' + recieverid)
-    color_reset()
-    subject = 'CRITICAL SITE FAILURE'
-    message = 'Warning,' + url + 'failed to respond...\nError code - ' + str(status_code)
-    message = "Subject: " + subject +'\n' + message
-    #smtp object definition part
-    connection = smtplib.SMTP('smtp.gmail.com', 587)
-    connection.ehlo()
-    connection.starttls()
-    connection.login(senderid, senderpswd)
-    connection.ehlo()
-    connection.sendmail(senderid,recieverid, message + '\n\n\n\n sent via URLWatcher')
-    print(' [+] Mail sent...')
-    connection.close()
+    try:
+        print(Fore.YELLOW + ' [+] Sending alert e-mail to ' + recieverid)
+        color_reset()
+        subject = 'CRITICAL SITE FAILURE'
+        message = 'Warning,' + url + 'failed to respond...\nError code - ' + str(status_code)
+        message = "Subject: " + subject +'\n' + message
+        #smtp object definition part
+        connection = smtplib.SMTP('smtp.gmail.com', 587)
+        connection.ehlo()
+        connection.starttls()
+        connection.login(senderid, senderpswd)
+        connection.ehlo()
+        connection.sendmail(senderid,recieverid, message + '\n\n\n\n sent via URLWatcher')
+        print(' [+] Mail sent...')
+        connection.close()
+    except KeyboardInterrupt:
+        if sound_choice == '-s' or '-S':
+            winsound.PlaySound('startup_sound.wav', winsound.SND_FILENAME)
+        print('\n [-] Program halted by keyboard interruption (^C)\n [-] Exiting...\n [-] Developed by MSVR - github.com/itsmsvr/urlwatcher')
+        sys.exit()
+
 
 ################################ MAIN EXECUTION BEGINS HERE #####################################
 
 #the beginning process of input
 try:
+    url           = str(sys.argv[1])
+    url = 'https://' +  url
+    intensity     = int(sys.argv[2])
+    sound_choice  = str(sys.argv[3])
+    automation    = str(sys.argv[4])
+
+except IndexError:
+    print(' One or more arguments provided are either missing or out of order...')
+    sys.exit()
+try:
     clear()
-    leave = 0
     print(Fore.BLACK + Back.WHITE + '------------------------------PORTAL MONITOR---------------------------')
     color_reset()
-    print(' [~] URL to monitor         ->', end = ' ')
-
+    #print(url)
+    #print(' [~] URL to monitor         ->', end = ' ')
     winsound.PlaySound('startup_sound.wav', winsound.SND_FILENAME)
-
-    url = input()
-    url = 'https://' +  url
-    print(' [~] Frequency (in seconds) ->', end = ' ')
-    intensity = int(input())
-    print(' [~] Want sound ? (y/n)     ->', end = ' ')
-    sound_choice = input()
+    print('\n >>> Monitoring - ' + url + '\n >>> Frequency  - ' + str(intensity) + ' seconds', end = '\t\t\t')
+    if automation == '-a':
+        print(' >>> Mode - Automatic')
+    else:
+        print(' >>> Mode - Manual')
 
 except KeyboardInterrupt:
-    print('\n [-] Program halted by keyboard interruption\n [-] Exiting...\n [-] Developed by MSVR - github.com/itsmsvr/urlwatcher')
-    sys.exit()
+    print('\n [-] Program halted by keyboard interruption (^C)\n [-] Exiting...\n [-] Developed by MSVR - github.com/itsmsvr/urlwatcher')
     
 #send request process that sends https request
 try:
     my_request = requests.get(url)
     status = str(my_request.status_code)
 except SSLError :
-    print(Fore.RED + '\n [!] ERROR - SSL verification failed')
+    print(Fore.RED + '\n [!] WARNING - SSL verification failed')
     winsound.Beep(2500,300)
     winsound.Beep(1000,500)
     color_reset()
-    print(' [+] Do you want to continue (y/n) ', end = ' ')
-    http_choice = input()
-
-    if http_choice == 'y' or 'Y':
+    if automation == '-a' or '-A':
         continue_without_encryption(url, intensity, sound_choice)
     else:
-        print(' [-] Exiting...')
-        sys.exit()
+        print(' [+] Do you want to continue (y/n) ', end = ' ')
+        http_choice = input()
+
+        if http_choice == '-s' or '-S':
+            continue_without_encryption(url, intensity, sound_choice)
+        else:
+            print(' [-] Exiting...')
+            sys.exit()
+except InvalidURL:
+    print(Fore.RED + ' [!] The URL you entered was invalid')
+    color_reset()
 except ConnectionError:
-    print(Fore.RED + '\n [-] ERROR - No internet connection')
+    print(Fore.RED + '\n [-] ERROR - No internet connection' + status)
     winsound.Beep(1300,500)
     color_reset()
     print(' [-] Exiting...')
-    sys.exit()
-finally:
-    #start the monitoring process
-    main_monitor_loop(url, intensity, sound_choice, status)
+    if automation == '-a' or '-A':
+        restart_self()
+    else:
+        sys.exit()
 
-   
+
+#start the monitoring process
+main_monitor_loop(url, intensity, sound_choice, status)
+
+
 """
 try:
 
@@ -176,7 +202,8 @@ try:
             x = int(y)
 
 except KeyboardInterrupt:
-    print('\n [-] Program halted by keyboard interruption\n [-] Exiting...')
-        """
-        
+print('\n [-] Program halted by keyboard interruption (^C)\n [-] Exiting...')
+    """
+
+
 
